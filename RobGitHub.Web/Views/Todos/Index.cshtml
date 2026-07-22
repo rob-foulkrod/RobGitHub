@@ -1,0 +1,68 @@
+@model RobGitHub.Web.Models.TodoPageViewModel
+@{
+    ViewData["Title"] = "Fun Todo Board";
+}
+
+<section class="hero-panel shadow-lg">
+    <div>
+        <p class="eyebrow">Bright ideas only</p>
+        <h1>Fun Todo Board</h1>
+        <p class="hero-copy">A cheerful .NET 10 MVC todo app with in-memory storage, quick updates, and a playful vibe that is definitely not purple.</p>
+    </div>
+    <div class="hero-badge">
+        <span>@Model.PendingCount</span>
+        <small>pending</small>
+    </div>
+</section>
+
+@if (Model.PendingCount > 0)
+{
+    <div class="pending-toast" role="status" aria-live="polite">
+        <strong>Heads up!</strong> You have @Model.PendingCount pending @(Model.PendingCount == 1 ? "todo" : "todos") waiting for your sparkle.
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <section class="todo-card">
+            <h2>Add a new win</h2>
+            <form asp-action="Create" method="post" class="todo-form">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <label asp-for="NewTodoTitle" class="form-label">Todo title</label>
+                <input asp-for="NewTodoTitle" class="form-control form-control-lg" placeholder="Dance through deployment" />
+                <span asp-validation-for="NewTodoTitle" class="text-danger"></span>
+                <button type="submit" class="btn btn-sunrise mt-3">Add todo</button>
+            </form>
+        </section>
+    </div>
+    <div class="col-lg-7">
+        <section class="todo-card">
+            <div class="todo-card-header">
+                <h2>Your momentum list</h2>
+                <span class="todo-count">@Model.Todos.Count item(s)</span>
+            </div>
+
+            <div class="todo-list">
+                @foreach (var todo in Model.Todos)
+                {
+                    <article class="todo-item @(todo.IsComplete ? "is-complete" : "is-pending")">
+                        <div>
+                            <h3>@todo.Title</h3>
+                            <p>@(todo.IsComplete ? "Completed like a champion" : "Still in the queue")</p>
+                        </div>
+                        <form asp-action="Toggle" method="post">
+                            <input type="hidden" name="id" value="@todo.Id" />
+                            <button type="submit" class="btn @(todo.IsComplete ? "btn-outline-dark" : "btn-outline-success")">
+                                @(todo.IsComplete ? "Mark pending" : "Complete")
+                            </button>
+                        </form>
+                    </article>
+                }
+            </div>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

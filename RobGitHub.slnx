@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="RobGitHub.Web.Tests/RobGitHub.Web.Tests.csproj" />
+  <Project Path="RobGitHub.Web/RobGitHub.Web.csproj" />
+</Solution>
