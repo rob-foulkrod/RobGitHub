@@ -21,10 +21,10 @@ public class TodosController(ITodoRepository todoRepository) : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Create(TodoPageViewModel model)
     {
-        if (string.IsNullOrWhiteSpace(model.NewTodoTitle))
-        {
-            ModelState.AddModelError(nameof(TodoPageViewModel.NewTodoTitle), "Todo title is required.");
-        }
+var titleKey = nameof(TodoPageViewModel.NewTodoTitle);
+if (string.IsNullOrWhiteSpace(model.NewTodoTitle) &&
+    (!ModelState.TryGetValue(titleKey, out var entry) || entry.Errors.Count == 0))
+    ModelState.AddModelError(titleKey, "Todo title is required.");
 
         if (!ModelState.IsValid)
         {
