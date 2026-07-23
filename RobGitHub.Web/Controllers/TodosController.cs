@@ -21,6 +21,11 @@ public class TodosController(ITodoRepository todoRepository) : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Create(TodoPageViewModel model)
     {
+        if (string.IsNullOrWhiteSpace(model.NewTodoTitle))
+        {
+            ModelState.AddModelError(nameof(TodoPageViewModel.NewTodoTitle), "Todo title is required.");
+        }
+
         if (!ModelState.IsValid)
         {
             var todos = todoRepository.GetAll();

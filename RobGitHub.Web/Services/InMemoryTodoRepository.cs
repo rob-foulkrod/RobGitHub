@@ -15,6 +15,11 @@ public class InMemoryTodoRepository : ITodoRepository
 
     public TodoItem Add(string title)
     {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new ArgumentException("Todo title is required.", nameof(title));
+        }
+
         var normalizedTitle = title.Trim();
 
         lock (syncRoot)

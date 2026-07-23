@@ -28,6 +28,18 @@ public class InMemoryTodoRepositoryTests
     }
 
     [Fact]
+    public void Add_WhitespaceOnlyTitle_ThrowsAndDoesNotStoreBlankTodo()
+    {
+        var repository = new InMemoryTodoRepository();
+        var initialCount = repository.GetAll().Count;
+
+        Assert.Throws<ArgumentException>(() => repository.Add("   "));
+
+        Assert.Equal(initialCount, repository.GetAll().Count);
+        Assert.DoesNotContain(repository.GetAll(), todo => string.IsNullOrWhiteSpace(todo.Title));
+    }
+
+    [Fact]
     public void Toggle_UnknownId_ReturnsFalse()
     {
         var repository = new InMemoryTodoRepository();
