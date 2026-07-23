@@ -135,6 +135,6 @@ module. Work through them in any order.
 - **Start the lab:** <https://github.com/firstcontributions/first-contributions>
 
 
-### Simple Example of Boards
+### Simple Example of Projects
 https://microsoftlearning.github.io/AZ-2008_DevOps_Foundations_Core_Principles_Practices/Instructions/Labs/01-agile-planning-management-using-github.html
 
