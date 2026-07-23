@@ -133,3 +133,8 @@ module. Work through them in any order.
     2. Create a branch and add your name to `Contributors.md`.
     3. Commit, push, and open a pull request for review.
 - **Start the lab:** <https://github.com/firstcontributions/first-contributions>
+
+
+### Simple Example of Boards
+https://microsoftlearning.github.io/AZ-2008_DevOps_Foundations_Core_Principles_Practices/Instructions/Labs/01-agile-planning-management-using-github.html
+
