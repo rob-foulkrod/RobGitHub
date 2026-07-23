@@ -9,14 +9,14 @@ A fun-looking .NET 10 MVC todo application with:
 
 ## Run
 
-```bash
-dotnet run --project /home/runner/work/RobGitHub/RobGitHub/RobGitHub.Web
+```powershell
+dotnet run --project .\RobGitHub.Web
 ```
 
 ## Test
 
-```bash
-dotnet test /home/runner/work/RobGitHub/RobGitHub/RobGitHub.slnx
+```powershell
+dotnet test .\RobGitHub.slnx
 ```
 
 ## Azure deployment
