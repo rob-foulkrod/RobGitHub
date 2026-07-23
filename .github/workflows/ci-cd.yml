@@ -17,6 +17,7 @@ jobs:
       build: ${{ steps.build.outcome }}
       test: ${{ steps.test.outcome }}
       coverage: ${{ steps.coverage.outcome }}
+      coverage_percentage: ${{ steps.coverage.outputs.line_coverage }}
       dependency_audit: ${{ steps.dependency_audit.outcome }}
     runs-on: ubuntu-latest
     steps:
@@ -55,6 +56,7 @@ jobs:
           [xml]$coverage = Get-Content $coverageFile.FullName
           $lineCoverage = [math]::Round(([double]$coverage.coverage.'line-rate') * 100, 2)
           Write-Host "Line coverage: $lineCoverage% (minimum: $minimumLineCoverage%)"
+          "line_coverage=$lineCoverage" | Add-Content -Path $env:GITHUB_OUTPUT
 
           if ($lineCoverage -lt $minimumLineCoverage) {
             throw "Line coverage $lineCoverage% is below the required $minimumLineCoverage%."
@@ -85,12 +87,13 @@ jobs:
           script: |
             const marker = '<!-- robgithub-ci-summary -->';
             const jobResult = '${{ needs.ci.result }}';
+            const coveragePercentage = '${{ needs.ci.outputs.coverage_percentage }}';
             const checks = [
               ['Restore dependencies', '${{ needs.ci.outputs.restore }}'],
               ['Formatting', '${{ needs.ci.outputs.format }}'],
               ['Build', '${{ needs.ci.outputs.build }}'],
               ['Tests', '${{ needs.ci.outputs.test }}'],
-              ['40% line coverage', '${{ needs.ci.outputs.coverage }}'],
+              ['Line coverage (minimum 40%)', '${{ needs.ci.outputs.coverage }}', coveragePercentage ? `${coveragePercentage}%` : 'not reported'],
               ['Dependency vulnerability audit', '${{ needs.ci.outputs.dependency_audit }}'],
             ];
             const icons = {
@@ -101,7 +104,7 @@ jobs:
             };
             const status = (value) => value || 'skipped';
             const rows = checks
-              .map(([name, result]) => `| ${name} | ${icons[status(result)] ?? '⚠️'} ${status(result)} |`)
+              .map(([name, result, detail]) => `| ${name} | ${icons[status(result)] ?? '⚠️'} ${status(result)}${detail ? ` — ${detail}` : ''} |`)
               .join('\n');
             const overall = icons[jobResult] ?? '⚠️';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
