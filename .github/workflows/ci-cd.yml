@@ -1,9 +1,10 @@
-name: CI and CD
+name: CI and CD # Continuous Integration and Continuous Deployment
 
 on:
   push:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch: # manual trigger (button)
 
 permissions:
   contents: read
