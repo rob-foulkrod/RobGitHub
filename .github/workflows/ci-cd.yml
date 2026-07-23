@@ -1,0 +1,154 @@
+name: CI and CD
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Build, format, test, and audit
+    outputs:
+      restore: ${{ steps.restore.outcome }}
+      format: ${{ steps.format.outcome }}
+      build: ${{ steps.build.outcome }}
+      test: ${{ steps.test.outcome }}
+      dependency_audit: ${{ steps.dependency_audit.outcome }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        id: restore
+        run: dotnet restore RobGitHub.slnx
+
+      - name: Check formatting
+        id: format
+        run: dotnet format RobGitHub.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        id: build
+        run: dotnet build RobGitHub.slnx --configuration Release --no-restore
+
+      - name: Test
+        id: test
+        run: dotnet test RobGitHub.slnx --configuration Release --no-build --no-restore
+
+      - name: Check known vulnerable dependencies
+        id: dependency_audit
+        shell: pwsh
+        run: |
+          dotnet list RobGitHub.slnx package --vulnerable --include-transitive | Tee-Object -Variable dependencyReport
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency vulnerability scan failed.' }
+          if ($dependencyReport -match '(?i)has the following vulnerable packages|critical|high') {
+            throw 'Known vulnerable dependencies were reported.'
+          }
+
+  report-pr-ci:
+    name: Update pull request CI summary
+    needs: ci
+    if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Create or update CI summary comment
+        uses: actions/github-script@v9.0.0
+        with:
+          script: |
+            const marker = '<!-- robgithub-ci-summary -->';
+            const jobResult = '${{ needs.ci.result }}';
+            const checks = [
+              ['Restore dependencies', '${{ needs.ci.outputs.restore }}'],
+              ['Formatting', '${{ needs.ci.outputs.format }}'],
+              ['Build', '${{ needs.ci.outputs.build }}'],
+              ['Tests', '${{ needs.ci.outputs.test }}'],
+              ['Dependency vulnerability audit', '${{ needs.ci.outputs.dependency_audit }}'],
+            ];
+            const icons = {
+              success: '✅',
+              failure: '❌',
+              cancelled: '⚪',
+              skipped: '⏭️',
+            };
+            const status = (value) => value || 'skipped';
+            const rows = checks
+              .map(([name, result]) => `| ${name} | ${icons[status(result)] ?? '⚠️'} ${status(result)} |`)
+              .join('\n');
+            const overall = icons[jobResult] ?? '⚠️';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `${marker}
+            ## CI results: ${overall} ${jobResult}
+
+            | Check | Result |
+            | --- | --- |
+            ${rows}
+
+            [View this workflow run](${runUrl})`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existingComment = comments.find((comment) => comment.body?.includes(marker));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  cd:
+    name: Deploy staging and swap production
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Sign in to Azure using OpenID Connect
+        uses: azure/login@v3.0.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          auth-type: IDENTITY
+
+      - name: Deploy to staging, verify, and swap
+        shell: pwsh
+        run: |
+          ./scripts/Deploy-StagingThenSwap.ps1 `
+            -ResourceGroupName '${{ secrets.AZURE_RESOURCE_GROUP }}' `
+            -WebAppName '${{ secrets.AZURE_WEBAPP_NAME }}'
