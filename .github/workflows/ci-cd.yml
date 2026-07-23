@@ -16,6 +16,7 @@ jobs:
       format: ${{ steps.format.outcome }}
       build: ${{ steps.build.outcome }}
       test: ${{ steps.test.outcome }}
+      coverage: ${{ steps.coverage.outcome }}
       dependency_audit: ${{ steps.dependency_audit.outcome }}
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +42,23 @@ jobs:
 
       - name: Test
         id: test
-        run: dotnet test RobGitHub.slnx --configuration Release --no-build --no-restore
+        run: dotnet test RobGitHub.slnx --configuration Release --no-build --no-restore --settings coverage.runsettings --collect:"XPlat Code Coverage" --results-directory .artifacts/coverage
+
+      - name: Require at least 40% line coverage
+        id: coverage
+        shell: pwsh
+        run: |
+          $minimumLineCoverage = 40
+          $coverageFile = Get-ChildItem .artifacts/coverage -Recurse -Filter coverage.cobertura.xml | Select-Object -First 1
+          if (-not $coverageFile) { throw 'Cobertura coverage report was not created.' }
+
+          [xml]$coverage = Get-Content $coverageFile.FullName
+          $lineCoverage = [math]::Round(([double]$coverage.coverage.'line-rate') * 100, 2)
+          Write-Host "Line coverage: $lineCoverage% (minimum: $minimumLineCoverage%)"
+
+          if ($lineCoverage -lt $minimumLineCoverage) {
+            throw "Line coverage $lineCoverage% is below the required $minimumLineCoverage%."
+          }
 
       - name: Check known vulnerable dependencies
         id: dependency_audit
@@ -73,6 +90,7 @@ jobs:
               ['Formatting', '${{ needs.ci.outputs.format }}'],
               ['Build', '${{ needs.ci.outputs.build }}'],
               ['Tests', '${{ needs.ci.outputs.test }}'],
+              ['40% line coverage', '${{ needs.ci.outputs.coverage }}'],
               ['Dependency vulnerability audit', '${{ needs.ci.outputs.dependency_audit }}'],
             ];
             const icons = {
