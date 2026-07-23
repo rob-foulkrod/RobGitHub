@@ -33,6 +33,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: csharp
+          build-mode: manual
           queries: security-and-quality
 
       - name: Set up .NET
