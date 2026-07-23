@@ -12,6 +12,10 @@ permissions:
 jobs:
   ci:
     name: Build, format, test, and audit
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     outputs:
       restore: ${{ steps.restore.outcome }}
       format: ${{ steps.format.outcome }}
@@ -24,6 +28,13 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7.0.1
+
+      - name: Initialize CodeQL for C#
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: manual
+          queries: security-and-quality
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6.0.0
@@ -96,6 +107,11 @@ jobs:
           path: .artifacts/infra/main.json
           if-no-files-found: error
           retention-days: 7
+
+      - name: Analyze C# with CodeQL
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:csharp'
 
   report-pr-ci:
     name: Update pull request CI summary
