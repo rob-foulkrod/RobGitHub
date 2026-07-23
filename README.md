@@ -27,7 +27,7 @@ On a push to `main`, GitHub Actions deploys the Bicep template, publishes and pa
 
 ### GitHub Actions setup
 
-The workflow at `.github/workflows/ci-cd.yml` runs restore, format verification, build, tests, coverage enforcement, and a vulnerable-dependency scan on every push. Pushes to `main` deploy through GitHub Actions; no local deployment script is required.
+The workflow at `.github/workflows/ci-cd.yml` runs restore, format verification, build, tests, coverage enforcement, a vulnerable-dependency scan, application publish, and Bicep compilation in CI. CI uploads the validated application ZIP and compiled ARM template as artifacts. On a push to `main`, CD downloads those exact artifacts and deploys them through GitHub Actions; CD does not rebuild source code or recompile Bicep.
 
 Configure these GitHub Actions repository secrets before merging to `main`: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_WEBAPP_NAME`.
 

@@ -73,6 +73,30 @@ jobs:
             throw 'Known vulnerable dependencies were reported.'
           }
 
+      - name: Publish application deployment package
+        run: |
+          dotnet publish RobGitHub.Web/RobGitHub.Web.csproj --configuration Release --no-build --no-restore --output .artifacts/publish
+          cd .artifacts/publish && zip --recurse-paths ../RobGitHub.Web.zip .
+
+      - name: Compile Bicep deployment template
+        run: az bicep build --file infra/main.bicep --outfile .artifacts/infra/main.json
+
+      - name: Upload application artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: webapp-package
+          path: .artifacts/RobGitHub.Web.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload infrastructure artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: infrastructure-template
+          path: .artifacts/infra/main.json
+          if-no-files-found: error
+          retention-days: 7
+
   report-pr-ci:
     name: Update pull request CI summary
     needs: ci
@@ -152,13 +176,17 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Check out source
-        uses: actions/checkout@v7.0.1
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v6.0.0
+      - name: Download application artifact
+        uses: actions/download-artifact@v8.0.1
         with:
-          dotnet-version: 10.0.x
+          name: webapp-package
+          path: .artifacts/app
+
+      - name: Download infrastructure artifact
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: infrastructure-template
+          path: .artifacts/infra
 
       - name: Login to Azure
         uses: azure/login@v3.0.0
@@ -173,15 +201,9 @@ jobs:
           inlineScript: |
             az deployment group create \
               --resource-group '${{ secrets.AZURE_RESOURCE_GROUP }}' \
-              --template-file infra/main.bicep \
+              --template-file .artifacts/infra/main.json \
               --parameters webAppName='${{ secrets.AZURE_WEBAPP_NAME }}' location=eastus2 \
               --output none
-
-      - name: Publish application
-        run: dotnet publish RobGitHub.Web/RobGitHub.Web.csproj --configuration Release --output .artifacts/publish
-
-      - name: Package application
-        run: cd .artifacts/publish && zip --recurse-paths ../RobGitHub.Web.zip .
 
       - name: Deploy application to staging slot
         uses: azure/webapps-deploy@v2.2.19
@@ -189,7 +211,7 @@ jobs:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP }}
           slot-name: staging
-          package: .artifacts/RobGitHub.Web.zip
+          package: .artifacts/app/RobGitHub.Web.zip
 
       - name: Verify staging health and swap to production
         uses: azure/cli@v3.0.0
