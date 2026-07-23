@@ -4,7 +4,8 @@ namespace RobGitHub.Web.Models;
 
 public class TodoPageViewModel
 {
-    [Required]
+    [Required(ErrorMessage = "Todo title is required.")]
+    [RegularExpression(@".*\S.*", ErrorMessage = "Todo title is required.")]
     [StringLength(120)]
     public string NewTodoTitle { get; set; } = string.Empty;
 
